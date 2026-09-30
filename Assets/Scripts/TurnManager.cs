@@ -18,6 +18,29 @@ public static class TurnManager
     // move as often as it likes and White Pawns can't be selected at all.
     public static bool TurnsEnabled { get; set; } = true;
 
+    // Whichever object last switched turns off through DisableTurns. Only
+    // that same object can switch them back on, so a scene being torn down
+    // can't undo the setting of the scene replacing it - with an async load
+    // the new scene can start up before the old one is destroyed.
+    private static Object turnsDisabledBy;
+
+    public static void DisableTurns(Object owner)
+    {
+        turnsDisabledBy = owner;
+        TurnsEnabled = false;
+    }
+
+    public static void RestoreTurns(Object owner)
+    {
+        if (!ReferenceEquals(turnsDisabledBy, owner))
+        {
+            return;
+        }
+
+        turnsDisabledBy = null;
+        TurnsEnabled = true;
+    }
+
     public static event System.Action EnemyTurnStarted;
     public static event System.Action EnemyTurnEnded;
 

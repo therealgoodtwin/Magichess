@@ -72,7 +72,7 @@ public class MainMenuController : MonoBehaviour
     // and White Pawns can't be selected.
     private void Awake()
     {
-        TurnManager.TurnsEnabled = false;
+        TurnManager.DisableTurns(this);
 
         // Switched off here rather than in Start so they never get a single
         // frame of running before the intro is over.
@@ -107,7 +107,7 @@ public class MainMenuController : MonoBehaviour
 
     private void OnDestroy()
     {
-        TurnManager.TurnsEnabled = true;
+        TurnManager.RestoreTurns(this);
     }
 
     private void Start()

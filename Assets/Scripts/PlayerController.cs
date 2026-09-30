@@ -272,7 +272,15 @@ public class PlayerController : MonoBehaviour, ISelectablePiece
             return;
         }
 
-        reachableTiles.AddRange(TileGrid.GetNeighbors(currentTile));
+        foreach (Tile neighbor in TileGrid.GetNeighbors(currentTile))
+        {
+            // Sunk tiles (left behind in the Overworld) can't be walked onto.
+            if (!neighbor.IsSunk)
+            {
+                reachableTiles.Add(neighbor);
+            }
+        }
+
         SetReachableHighlighted(true);
     }
 
