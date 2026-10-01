@@ -2,15 +2,22 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!21 &2100000
 Material:
-  serializedVersion: 6
+  serializedVersion: 8
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: 02.1-BlueprintGrid-Mug-02
   m_Shader: {fileID: 4800000, guid: bee44b4a58655ee4cbff107302a3e131, type: 3}
-  m_ShaderKeywords: DR_CEL_EXTRA_ON _CELPRIMARYMODE_SINGLE _TEXTUREBLENDINGMODE_MULTIPLY
-    _UNITYSHADOWMODE_MULTIPLY
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords:
+  - DR_CEL_EXTRA_ON
+  - DR_SPECULAR_ON
+  - _CELPRIMARYMODE_SINGLE
+  - _TEXTUREBLENDINGMODE_MULTIPLY
+  - _UNITYSHADOWMODE_MULTIPLY
+  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -18,6 +25,7 @@ Material:
   stringTagMap: {}
   disabledShaderPasses:
   - SRPDEFAULTUNLIT
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
@@ -91,7 +99,7 @@ Material:
     - _FlatSmoothness: 0.362
     - _FlatSpecularEdgeSmoothness: 0.5
     - _FlatSpecularEnabled: 1
-    - _FlatSpecularSize: 0.1
+    - _FlatSpecularSize: 0.832
     - _FlatSpecularSmoothness: 0.5
     - _Flatness: 1
     - _FlatnessExtra: 1
@@ -108,9 +116,9 @@ Material:
     - _GradientSize: 10
     - _GradientStart: 1.17
     - _GradientTop: 10
-    - _LightContribution: 0.5
+    - _LightContribution: 0.917
     - _LightFalloffSize: 0.0001
-    - _LightmapDirectionPitch: 0
+    - _LightmapDirectionPitch: 339
     - _LightmapDirectionYaw: 0
     - _Metallic: 0
     - _Mode: 0
@@ -127,14 +135,14 @@ Material:
     - _RimEnabled: 0
     - _SecondaryColor: 1
     - _SecondaryColorEnabled: 1
-    - _SelfShadingSize: 0.659
-    - _SelfShadingSizeExtra: 0.301
-    - _ShadowEdgeSize: 0.021
-    - _ShadowEdgeSizeExtra: 0.19
+    - _SelfShadingSize: 1
+    - _SelfShadingSizeExtra: 0.724
+    - _ShadowEdgeSize: 0.032
+    - _ShadowEdgeSizeExtra: 0.228
     - _ShadowEdgeSmoothness: 0.01
     - _ShadowFalloff: 0.01
     - _SmoothnessTextureChannel: 0
-    - _SpecularEnabled: 0
+    - _SpecularEnabled: 1
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _Surface: 0
@@ -149,9 +157,9 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.8962264, g: 0.7537787, b: 0.3339711, a: 1}
-    - _Color: {r: 0.8962264, g: 0.7537787, b: 0.33397114, a: 1}
+    - _Color: {r: 1, g: 0.74, b: 0, a: 1}
     - _ColorCelShadow: {r: 0.38581347, g: 0.38787434, b: 0.9622642, a: 1}
-    - _ColorDim: {r: 1, g: 0.40135294, b: 0, a: 1}
+    - _ColorDim: {r: 1, g: 0.9312867, b: 0, a: 1}
     - _ColorDimCurve: {r: 0.85, g: 0.85, b: 0.85, a: 0.85}
     - _ColorDimExtra: {r: 0.8113208, g: 0.33611923, b: 0, a: 0.85}
     - _ColorDimSteps: {r: 0.85, g: 0.85, b: 0.85, a: 0.85}
@@ -161,8 +169,9 @@ Material:
     - _ColorShadows: {r: 0.37835297, g: 0.4602353, b: 0.72, a: 1}
     - _EmissionColor: {r: 4.9245777, g: 0, b: 0, a: 1}
     - _FlatRimColor: {r: 0.52358484, g: 0.6375387, b: 1, a: 1}
-    - _FlatSpecularColor: {r: 0.52358484, g: 0.6375387, b: 1, a: 1}
-    - _LightmapDirection: {r: 0, g: 1, b: 0, a: 0}
+    - _FlatSpecularColor: {r: 1, g: 0.6280499, b: 0, a: 1}
+    - _LightmapDirection: {r: -0, g: 0.9335804, b: -0.35836807, a: 0}
     - _OutlineColor: {r: 1, g: 1, b: 1, a: 1}
     - _UnityShadowColor: {r: 0.65, g: 0.65, b: 0.65, a: 1}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1
