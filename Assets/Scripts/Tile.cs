@@ -53,6 +53,10 @@ public class Tile : MonoBehaviour
 
     public static readonly List<Tile> All = new();
 
+    // Sunk tiles (see Sink) have dropped out of play: they never highlight,
+    // and the King won't count them as somewhere he can move.
+    public bool IsSunk { get; private set; }
+
     private Vector3 baseLocalPosition;
     private Renderer tileRenderer;
     private Material originalMaterial;
@@ -92,8 +96,38 @@ public class Tile : MonoBehaviour
         TileGrid.MarkDirty();
     }
 
+    // Lowers the tile's resting position by depth world units and takes it
+    // out of play for good. It slides down at the same speed as a highlight
+    // lift, or jumps straight there if instant (restoring a saved board).
+    public void Sink(float depth, bool instant)
+    {
+        if (IsSunk)
+        {
+            return;
+        }
+
+        SetHighlighted(false);
+        SetEnemyDestinationHighlighted(false);
+        IsSunk = true;
+
+        Vector3 sunkWorldPosition = BaseWorldPosition + Vector3.down * depth;
+        baseLocalPosition = transform.parent != null
+            ? transform.parent.InverseTransformPoint(sunkWorldPosition)
+            : sunkWorldPosition;
+
+        if (instant)
+        {
+            transform.localPosition = baseLocalPosition;
+        }
+    }
+
     public void SetHighlighted(bool highlighted)
     {
+        if (highlighted && IsSunk)
+        {
+            return;
+        }
+
         if (isHighlighted == highlighted)
         {
             return;

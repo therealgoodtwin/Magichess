@@ -51,6 +51,16 @@ public class ScreenWipe : MonoBehaviour
         return instance;
     }
 
+    // True while a wipe is covering, loading or revealing. LoadScene() is
+    // ignored until it's false again.
+    public static bool IsBusy => instance != null && instance.busy;
+
+    // The default look: a black circle wipe at the standard speed both ways.
+    public static void LoadScene(string sceneName)
+    {
+        LoadScene(sceneName, Style.Circle, DefaultDuration, DefaultDuration, Color.black);
+    }
+
     public static void LoadScene(string sceneName, Style style, float closeDuration, float openDuration, Color color)
     {
         ScreenWipe wipe = GetInstance();

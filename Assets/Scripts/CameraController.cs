@@ -23,6 +23,9 @@ public class CameraController : MonoBehaviour
     [Tooltip("Height of the ground plane the camera pans across and orbits around.")]
     [SerializeField] private float groundHeight = 0f;
 
+    [Tooltip("Only W and S (up and down the screen) work - A/D panning and Q/E rotation are switched off. For scenes like the Overworld.")]
+    [SerializeField] private bool upDownOnly;
+
     [Header("Board Limits")]
     [Tooltip("Keeps the point the camera looks at inside the board, so it can't be panned off into empty space.")]
     [SerializeField] private bool limitToBoard = true;
@@ -110,6 +113,11 @@ public class CameraController : MonoBehaviour
 
         HandlePan(keyboard);
 
+        if (upDownOnly)
+        {
+            return;
+        }
+
         if (keyboard.qKey.wasPressedThisFrame)
         {
             BeginOrbit(-90f);
@@ -142,12 +150,12 @@ public class CameraController : MonoBehaviour
             move -= forward;
         }
 
-        if (keyboard.dKey.isPressed)
+        if (!upDownOnly && keyboard.dKey.isPressed)
         {
             move += right;
         }
 
-        if (keyboard.aKey.isPressed)
+        if (!upDownOnly && keyboard.aKey.isPressed)
         {
             move -= right;
         }
