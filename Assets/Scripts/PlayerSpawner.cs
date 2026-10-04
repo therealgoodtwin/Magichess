@@ -36,7 +36,7 @@ public class PlayerSpawner : MonoBehaviour
 
         if (tile != null)
         {
-            SitOnTile(King.transform, tile);
+            PiecePivotUtility.CenterOnTile(King.transform, tile);
         }
         else
         {
@@ -93,32 +93,5 @@ public class PlayerSpawner : MonoBehaviour
         }
 
         return nearest;
-    }
-
-    // Centres the piece's model over the tile and stands it on the tile's
-    // top face - going by what's actually drawn rather than by the prefab's
-    // pivot, which on the King isn't at the model's visual centre.
-    private static void SitOnTile(Transform piece, Tile tile)
-    {
-        MeshRenderer[] renderers = piece.GetComponentsInChildren<MeshRenderer>();
-
-        if (renderers.Length == 0 || !tile.TryGetComponent(out Renderer tileRenderer))
-        {
-            return;
-        }
-
-        Bounds pieceBounds = renderers[0].bounds;
-
-        for (int i = 1; i < renderers.Length; i++)
-        {
-            pieceBounds.Encapsulate(renderers[i].bounds);
-        }
-
-        Bounds tileBounds = tileRenderer.bounds;
-
-        piece.position += new Vector3(
-            tileBounds.center.x - pieceBounds.center.x,
-            tileBounds.max.y - pieceBounds.min.y,
-            tileBounds.center.z - pieceBounds.center.z);
     }
 }

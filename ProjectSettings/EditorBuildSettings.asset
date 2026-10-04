@@ -9,7 +9,7 @@ EditorBuildSettings:
     path: Assets/Scenes/Overworld/Overworld.unity
     guid: 6e611e5d071e1d24384d6fd9787f03bd
   - enabled: 1
-    path: Assets/Scenes/Test scene.unity
+    path: Assets/Scenes/Battle Maps/Test scene.unity
     guid: 87ad5313052bcaa4c97408e934c6f4d2
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0

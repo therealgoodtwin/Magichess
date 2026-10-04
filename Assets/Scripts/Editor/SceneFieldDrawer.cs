@@ -65,11 +65,15 @@ public class SceneFieldDrawer : PropertyDrawer
         return EditorGUIUtility.singleLineHeight;
     }
 
-    private static bool IsInBuild(string path)
+    // Matched by GUID as well as path, since a scene moved to another folder
+    // keeps its GUID but can leave its old path behind in the list.
+    public static bool IsInBuild(string path)
     {
+        string guid = AssetDatabase.AssetPathToGUID(path);
+
         foreach (EditorBuildSettingsScene buildScene in EditorBuildSettings.scenes)
         {
-            if (buildScene.path == path && buildScene.enabled)
+            if (buildScene.enabled && (buildScene.path == path || buildScene.guid.ToString() == guid))
             {
                 return true;
             }
@@ -78,14 +82,16 @@ public class SceneFieldDrawer : PropertyDrawer
         return false;
     }
 
-    private static void AddToBuild(string path)
+    public static void AddToBuild(string path)
     {
+        string guid = AssetDatabase.AssetPathToGUID(path);
         List<EditorBuildSettingsScene> scenes = new(EditorBuildSettings.scenes);
-        int existing = scenes.FindIndex(buildScene => buildScene.path == path);
+        int existing = scenes.FindIndex(buildScene => buildScene.path == path || buildScene.guid.ToString() == guid);
 
+        // Replaced rather than just re-enabled, so a stale path gets fixed too.
         if (existing >= 0)
         {
-            scenes[existing].enabled = true;
+            scenes[existing] = new EditorBuildSettingsScene(path, true);
         }
         else
         {

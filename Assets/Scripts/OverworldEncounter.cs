@@ -14,7 +14,13 @@ public class OverworldEncounter : MonoBehaviour
 
     public static readonly List<OverworldEncounter> All = new();
 
-    public string SceneName => scene != null ? scene.SceneName : null;
+    // Set by an Encounter Spawn Tile that rolled this as a battle encounter,
+    // taking the place of the Scene slot.
+    private string sceneOverride;
+
+    public string SceneName => !string.IsNullOrEmpty(sceneOverride)
+        ? sceneOverride
+        : scene != null ? scene.SceneName : null;
 
     // Where this encounter was placed in the scene - what OverworldState
     // remembers it by once it's been taken.
@@ -46,7 +52,27 @@ public class OverworldEncounter : MonoBehaviour
             // a Start or an Update in before it's actually gone.
             gameObject.SetActive(false);
             Destroy(gameObject);
+            return;
         }
+
+        // Stands on top of a tile, so any collider on it (or on whatever
+        // decorates it) would swallow clicks meant for that tile. Ignore
+        // Raycast keeps it out of every click raycast.
+        foreach (Transform part in GetComponentsInChildren<Transform>(true))
+        {
+            part.gameObject.layer = 2;
+        }
+    }
+
+    public void SetHomePosition(Vector3 position)
+    {
+        HomePosition = position;
+        tile = null;
+    }
+
+    public void OverrideScene(string sceneName)
+    {
+        sceneOverride = sceneName;
     }
 
     private void OnEnable()

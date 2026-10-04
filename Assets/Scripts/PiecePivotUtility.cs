@@ -46,4 +46,58 @@ public static class PiecePivotUtility
 
         return heightBelowMeshPivot + childOffsetY;
     }
+
+    // Moves a piece already in the scene so its model sits centred on the
+    // tile, resting on the tile's top face - going by what's actually drawn
+    // rather than by the piece's pivot, which often isn't at the model's
+    // centre (the King's isn't) or anywhere near it (encounter prefabs keep
+    // whatever position they were built at). A piece with a mesh of its own
+    // is centred by that mesh, so anything decorating it keeps its place
+    // around it. One that only holds other meshes is centred by all of them.
+    public static void CenterOnTile(Transform piece, Tile tile)
+    {
+        if (piece == null || tile == null || !tile.TryGetComponent(out Renderer tileRenderer))
+        {
+            return;
+        }
+
+        if (!TryGetModelBounds(piece, out Bounds pieceBounds))
+        {
+            return;
+        }
+
+        Bounds tileBounds = tileRenderer.bounds;
+
+        piece.position += new Vector3(
+            tileBounds.center.x - pieceBounds.center.x,
+            tileBounds.max.y - pieceBounds.min.y,
+            tileBounds.center.z - pieceBounds.center.z);
+    }
+
+    private static bool TryGetModelBounds(Transform piece, out Bounds bounds)
+    {
+        if (piece.TryGetComponent(out MeshRenderer ownRenderer))
+        {
+            bounds = ownRenderer.bounds;
+            return true;
+        }
+
+        bounds = default;
+        bool found = false;
+
+        foreach (MeshRenderer meshRenderer in piece.GetComponentsInChildren<MeshRenderer>())
+        {
+            if (found)
+            {
+                bounds.Encapsulate(meshRenderer.bounds);
+            }
+            else
+            {
+                bounds = meshRenderer.bounds;
+                found = true;
+            }
+        }
+
+        return found;
+    }
 }

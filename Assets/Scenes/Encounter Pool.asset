@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eeffbd0e77a44fa42a1e9c9e35a7f5ea, type: 3}
+  m_Name: Encounter Pool
+  m_EditorClassIdentifier: Assembly-CSharp::EncounterPool
+  battleEncountersFolder: {fileID: 102900000, guid: fe29e11f1c9eb394ea1a6488061e9013, type: 3}
+  otherEncountersFolder: {fileID: 102900000, guid: 3b603df6e0ba69943b481427240ad804, type: 3}
+  battleMapsFolder: {fileID: 102900000, guid: 76cdc6c612e34bc4f9267654e60e76ee, type: 3}
+  battleEncounters:
+  - {fileID: 532899907224236460, guid: c9ab423b172b50f42a2d1dfc72879e4c, type: 3}
+  - {fileID: 532899907224236460, guid: 5cd62f9bc4fad864783e7a5447a1dbaa, type: 3}
+  - {fileID: 532899907224236460, guid: 934f5e929ce7b8544b9c8f2392ddeb77, type: 3}
+  - {fileID: 3517759851940902135, guid: 11b578a12a76ce64b984956a20402c47, type: 3}
+  - {fileID: 3517759851940902135, guid: de5835c0683ce8a46a6f3e66cdbfcf2c, type: 3}
+  - {fileID: 3517759851940902135, guid: 467bb228cec9b0540a33de6206d51354, type: 3}
+  otherEncounters:
+  - {fileID: 9219222813026236324, guid: a6caa8528f3d19a45b043816ab3f04df, type: 3}
+  - {fileID: 7087677881071430801, guid: d3ea0f48793c93e44bc34bd29ec18fd9, type: 3}
+  battleMapPaths:
+  - Assets/Scenes/Battle Maps/Test scene.unity
+  groups:
+  - name: Shops
+    weight: 1
+    minCount: 1
+    hasLimit: 1
+    maxCount: 2
+    encounters:
+    - {fileID: 7087677881071430801, guid: d3ea0f48793c93e44bc34bd29ec18fd9, type: 3}
+  - name: Healing
+    weight: 1
+    minCount: 1
+    hasLimit: 1
+    maxCount: 2
+    encounters:
+    - {fileID: 9219222813026236324, guid: a6caa8528f3d19a45b043816ab3f04df, type: 3}
+  - name: Elites
+    weight: 4
+    minCount: 2
+    hasLimit: 1
+    maxCount: 4
+    encounters:
+    - {fileID: 532899907224236460, guid: c9ab423b172b50f42a2d1dfc72879e4c, type: 3}
+    - {fileID: 532899907224236460, guid: 5cd62f9bc4fad864783e7a5447a1dbaa, type: 3}
+    - {fileID: 532899907224236460, guid: 934f5e929ce7b8544b9c8f2392ddeb77, type: 3}
+  - name: Normal Encounters
+    weight: 10
+    minCount: 5
+    hasLimit: 0
+    maxCount: 15
+    encounters:
+    - {fileID: 3517759851940902135, guid: 11b578a12a76ce64b984956a20402c47, type: 3}
+    - {fileID: 3517759851940902135, guid: de5835c0683ce8a46a6f3e66cdbfcf2c, type: 3}
+    - {fileID: 3517759851940902135, guid: 467bb228cec9b0540a33de6206d51354, type: 3}
+  ungroupedWeight: 0

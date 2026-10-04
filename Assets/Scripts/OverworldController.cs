@@ -135,9 +135,10 @@ public class OverworldController : MonoBehaviour
             return;
         }
 
+        // Only counted as taken once there's somewhere to go - an encounter
+        // with no scene yet (a Merchant or Rest stop still being built) stays
+        // where it is.
         string sceneName = encounter.SceneName;
-        clearedEncounters.Add(encounter.HomePosition);
-        encounter.Clear();
 
         if (string.IsNullOrEmpty(sceneName))
         {
@@ -155,6 +156,9 @@ public class OverworldController : MonoBehaviour
             king.Select();
             return;
         }
+
+        clearedEncounters.Add(encounter.HomePosition);
+        encounter.Clear();
 
         StartCoroutine(Leave(sceneName, encounterDelay));
     }
