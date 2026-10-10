@@ -46,6 +46,14 @@ public static class TurnManager
 
     public static void EndPlayerTurn()
     {
+        // Initiative turns have no End Turn - each piece's turn ends on its
+        // own, and every enemy moving at once would skip the turn order.
+        // Nor is there a turn to end while a battle is still being set up.
+        if (InitiativeTurnManager.IsRunning || BattleSetup.IsActive)
+        {
+            return;
+        }
+
         EnemyTurnStarted?.Invoke();
 
         // Nothing actually started moving in response (no enemies, or none
@@ -67,9 +75,20 @@ public static class TurnManager
     {
         enemiesMoving = Mathf.Max(0, enemiesMoving - 1);
 
-        if (enemiesMoving == 0)
+        // Under initiative turns one enemy finishing isn't the end of the
+        // turn - EndRound is.
+        if (enemiesMoving == 0 && !InitiativeTurnManager.IsRunning)
         {
             EnemyTurnEnded?.Invoke();
         }
+    }
+
+    // Initiative turns: every piece has had its turn this round. Raised
+    // through the same EnemyTurnEnded the End Turn system uses, so everything
+    // that resets or counts once per turn (pieces' activation, wave timers)
+    // does so once per round.
+    public static void EndRound()
+    {
+        EnemyTurnEnded?.Invoke();
     }
 }

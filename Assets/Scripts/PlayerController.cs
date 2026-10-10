@@ -14,10 +14,23 @@ public class PlayerController : MonoBehaviour, ISelectablePiece
     [Tooltip("World units per second the King slides at when stepping onto a tile.")]
     [SerializeField] private float moveSpeed = 8f;
 
-    [Tooltip("HP dealt to an enemy pawn's Health when the King moves onto its tile, instead of an unconditional kill.")]
+    [Tooltip("Hit points. Starts out as whatever the Health component was set to.")]
+    [SerializeField, Min(0)] private int hp;
+
+    [Tooltip("HP dealt to an enemy when the King moves onto its tile. If the enemy survives, the King slides back to where he came from.")]
     [SerializeField] private int captureDamage = 3;
 
     public int CaptureDamage => captureDamage;
+
+    [Tooltip("Turn order in battles with an Initiative Turn Manager: the higher, the earlier this piece acts each round. Player pieces go before enemy pawns on the same Initiative.")]
+    [SerializeField] private int initiative = 1;
+
+    public int Initiative => initiative;
+
+    // The King is who the enemy goes for unless another piece's Threat
+    // draws it away, so he has none of his own.
+    public int Threat => 0;
+    public int ThreatRange => 0;
 
     [Header("Death")]
     [Tooltip("Force applied to fragments, pointing away from whatever dealt the fatal hit, when the King dies.")]
@@ -46,6 +59,9 @@ public class PlayerController : MonoBehaviour, ISelectablePiece
     // doesn't leak into a later scene.
     public static bool HighlightOnStart { get; set; } = true;
 
+    // Every King currently in play (normally just the one).
+    public static readonly List<PlayerController> All = new();
+
     private Tile currentTile;
     public Tile CurrentTile => currentTile;
 
@@ -55,6 +71,9 @@ public class PlayerController : MonoBehaviour, ISelectablePiece
     public bool IsMoving => isSliding;
 
     public bool HasBeenActivated { get; private set; }
+
+    // Whether the last Select() found anywhere this piece can move.
+    public bool HasReachableTiles => reachableTiles.Count > 0;
 
     private readonly List<Tile> reachableTiles = new();
 
@@ -67,11 +86,34 @@ public class PlayerController : MonoBehaviour, ISelectablePiece
     private bool isSliding;
     private Vector3 slideTarget;
 
+    // Sliding back to the tile it came from, after an attack that didn't kill.
+    private bool isBouncing;
+
     private Health health;
     private PieceMoveSound moveSound;
 
+    // An HP of 0 means it was never set here, so Health keeps its own.
+    private void Awake()
+    {
+        if (hp > 0 && TryGetComponent(out Health ownHealth))
+        {
+            ownHealth.SetHP(hp);
+        }
+    }
+
+    // Starts the HP field out at whatever Health was already set to, so
+    // nothing changes until it's edited.
+    private void OnValidate()
+    {
+        if (hp <= 0 && TryGetComponent(out Health ownHealth))
+        {
+            hp = ownHealth.StartingHP;
+        }
+    }
+
     private void OnEnable()
     {
+        All.Add(this);
         TurnManager.EnemyTurnEnded += HandleTurnEnded;
 
         health = GetComponent<Health>();
@@ -84,6 +126,7 @@ public class PlayerController : MonoBehaviour, ISelectablePiece
 
     private void OnDisable()
     {
+        All.Remove(this);
         TurnManager.EnemyTurnEnded -= HandleTurnEnded;
 
         if (health != null)
@@ -95,6 +138,12 @@ public class PlayerController : MonoBehaviour, ISelectablePiece
     private void HandleTurnEnded()
     {
         HasBeenActivated = false;
+    }
+
+    // Called by InitiativeTurnManager once this piece's turn is over. The
+    // King has no fire to put out, so there's nothing to do.
+    public void EndInitiativeTurn()
+    {
     }
 
     private void Start()
@@ -237,6 +286,32 @@ public class PlayerController : MonoBehaviour, ISelectablePiece
         }
     }
 
+    public bool TakeHit(int amount, Vector3 sourcePosition)
+    {
+        if (health == null)
+        {
+            return false;
+        }
+
+        health.TakeDamage(amount, sourcePosition);
+        return health.CurrentHP <= 0;
+    }
+
+    public void BounceBack()
+    {
+        if (previousTile == null)
+        {
+            return;
+        }
+
+        currentTile = previousTile;
+        slideTarget = transform.position;
+        slideTarget.x = currentTile.transform.position.x + tileOffset.x;
+        slideTarget.z = currentTile.transform.position.z + tileOffset.z;
+        isSliding = true;
+        isBouncing = true;
+    }
+
     private void Slide()
     {
         transform.position = Vector3.MoveTowards(transform.position, slideTarget, moveSpeed * Time.deltaTime);
@@ -244,6 +319,20 @@ public class PlayerController : MonoBehaviour, ISelectablePiece
         if (transform.position == slideTarget)
         {
             isSliding = false;
+
+            // Back from an attack that didn't kill - the move itself was
+            // already counted when it first landed.
+            if (isBouncing)
+            {
+                isBouncing = false;
+
+                if (!TurnManager.TurnsEnabled)
+                {
+                    Select();
+                }
+
+                return;
+            }
 
             if (TurnManager.TurnsEnabled)
             {
@@ -274,8 +363,9 @@ public class PlayerController : MonoBehaviour, ISelectablePiece
 
         foreach (Tile neighbor in TileGrid.GetNeighbors(currentTile))
         {
-            // Sunk tiles (left behind in the Overworld) can't be walked onto.
-            if (!neighbor.IsSunk)
+            // Sunk tiles (left behind in the Overworld) can't be walked onto,
+            // and neither can a tile another of the player's pieces is on.
+            if (!neighbor.IsSunk && !BoardPieces.IsPlayerPieceOn(neighbor, this))
             {
                 reachableTiles.Add(neighbor);
             }

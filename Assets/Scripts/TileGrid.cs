@@ -5,11 +5,16 @@ using UnityEngine;
 /// Derives a (column, row) grid from whatever tiles are currently in the
 /// scene and answers neighbor queries, including diagonals, without
 /// assuming any particular tile size, spacing or orientation.
+///
+/// A tile closed off by a Blocker keeps its place in the grid, but is left
+/// out of GetTileAt and every neighbor query - to anything working out where
+/// a piece can go, it's as if there were no tile there at all.
 /// </summary>
 public static class TileGrid
 {
     private static readonly Dictionary<Vector2Int, Tile> tileByCoord = new();
     private static readonly Dictionary<Tile, Vector2Int> coordByTile = new();
+    private static readonly HashSet<Tile> blockedTiles = new();
     private static bool isDirty = true;
 
     public static void MarkDirty()
@@ -23,10 +28,34 @@ public static class TileGrid
         return coordByTile.TryGetValue(tile, out coord);
     }
 
+    // The tile a piece could stand on at coord: null if there's none there,
+    // or it's closed off by a Blocker.
     public static Tile GetTileAt(Vector2Int coord)
     {
         Rebuild();
-        return tileByCoord.TryGetValue(coord, out Tile tile) ? tile : null;
+        return tileByCoord.TryGetValue(coord, out Tile tile) && !blockedTiles.Contains(tile) ? tile : null;
+    }
+
+    // How many tiles apart two tiles are, a diagonal step counting as one -
+    // the number of moves a King would need between them on an open board.
+    // int.MaxValue if either isn't on the board.
+    public static int GetDistance(Tile a, Tile b)
+    {
+        if (a == null || b == null ||
+            !TryGetCoord(a, out Vector2Int coordA) || !TryGetCoord(b, out Vector2Int coordB))
+        {
+            return int.MaxValue;
+        }
+
+        return Mathf.Max(Mathf.Abs(coordA.x - coordB.x), Mathf.Abs(coordA.y - coordB.y));
+    }
+
+    // Whether a Blocker closes the tile off: no piece can move onto it or
+    // through it.
+    public static bool IsBlocked(Tile tile)
+    {
+        Rebuild();
+        return tile != null && blockedTiles.Contains(tile);
     }
 
     public static Tile FindNearest(Vector3 worldPosition)
@@ -121,7 +150,7 @@ public static class TileGrid
 
     private static void TryAddNeighbor(List<Tile> neighbors, Vector2Int coord)
     {
-        if (tileByCoord.TryGetValue(coord, out Tile neighbor))
+        if (tileByCoord.TryGetValue(coord, out Tile neighbor) && !blockedTiles.Contains(neighbor))
         {
             neighbors.Add(neighbor);
         }
@@ -142,12 +171,26 @@ public static class TileGrid
         isDirty = false;
         tileByCoord.Clear();
         coordByTile.Clear();
+        blockedTiles.Clear();
 
         IReadOnlyList<Tile> tiles = Tile.All;
 
         if (tiles.Count == 0)
         {
             return;
+        }
+
+        // Blocked tiles still get a coordinate below like any other - the
+        // tiles around them are found by hopping from neighbor to neighbor,
+        // so leaving them out would cut the board in two.
+        foreach (Blocker blocker in Blocker.All)
+        {
+            Tile blocked = blocker.FindTile();
+
+            if (blocked != null)
+            {
+                blockedTiles.Add(blocked);
+            }
         }
 
         // Positions that differ by far less than one tile's width are the

@@ -33,8 +33,8 @@ Transform:
   m_GameObject: {fileID: 3517759851940902135}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.1874, y: 2.8656, z: 1.3675}
-  m_LocalScale: {x: 0.39093322, y: 0.39093322, z: 0.39093322}
+  m_LocalPosition: {x: -4.1687, y: 2.3717, z: 1.3829}
+  m_LocalScale: {x: 0.8055758, y: 0.8055758, z: 0.8055758}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5969697536409197766}
@@ -336,7 +336,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WhitePawnController
   moveSpeed: 8
+  hp: 1
   captureDamage: 1
+  initiative: 1
+  threat: 1
+  threatRange: 2
   fireEffectRoot: {fileID: 5969697536409197766}
   explosionForce: 8
   explosionUpwardForce: 3

@@ -108,6 +108,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 8
   captureDamage: 5
+  initiative: 2
   explosionForce: 10
   explosionUpwardForce: 3
 --- !u!114 &8719582672105528986

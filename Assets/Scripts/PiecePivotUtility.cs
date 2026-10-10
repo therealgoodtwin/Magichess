@@ -56,25 +56,45 @@ public static class PiecePivotUtility
     // around it. One that only holds other meshes is centred by all of them.
     public static void CenterOnTile(Transform piece, Tile tile)
     {
-        if (piece == null || tile == null || !tile.TryGetComponent(out Renderer tileRenderer))
+        if (tile != null && tile.TryGetComponent(out Renderer tileRenderer))
         {
-            return;
+            StandOn(piece, TopCenter(tileRenderer.bounds));
         }
-
-        if (!TryGetModelBounds(piece, out Bounds pieceBounds))
-        {
-            return;
-        }
-
-        Bounds tileBounds = tileRenderer.bounds;
-
-        piece.position += new Vector3(
-            tileBounds.center.x - pieceBounds.center.x,
-            tileBounds.max.y - pieceBounds.min.y,
-            tileBounds.center.z - pieceBounds.center.z);
     }
 
-    private static bool TryGetModelBounds(Transform piece, out Bounds bounds)
+    // The middle of a surface's top face - where the base of a piece goes
+    // for it to stand on that surface.
+    public static Vector3 TopCenter(Bounds surface)
+    {
+        return new Vector3(surface.center.x, surface.max.y, surface.center.z);
+    }
+
+    // Moves a piece so its model stands on a point: centred over it, with
+    // its lowest part resting on it.
+    public static void StandOn(Transform piece, Vector3 point)
+    {
+        if (TryGetBaseOffset(piece, out Vector3 baseOffset))
+        {
+            piece.position = point + baseOffset;
+        }
+    }
+
+    // How far a piece's own position is from the middle of its model's
+    // base. Add it to a point to get where the piece has to be to stand
+    // there.
+    public static bool TryGetBaseOffset(Transform piece, out Vector3 baseOffset)
+    {
+        if (piece == null || !TryGetModelBounds(piece, out Bounds bounds))
+        {
+            baseOffset = Vector3.zero;
+            return false;
+        }
+
+        baseOffset = piece.position - new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+        return true;
+    }
+
+    public static bool TryGetModelBounds(Transform piece, out Bounds bounds)
     {
         if (piece.TryGetComponent(out MeshRenderer ownRenderer))
         {

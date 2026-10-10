@@ -135,7 +135,7 @@ Material:
     - _SecondaryColorEnabled: 1
     - _SelfShadingSize: 0.755
     - _SelfShadingSizeExtra: 0.5
-    - _ShadowEdgeSize: 0.298
+    - _ShadowEdgeSize: 0.363
     - _ShadowEdgeSizeExtra: 0.05
     - _ShadowEdgeSmoothness: 0.01
     - _ShadowFalloff: 0.01
@@ -155,7 +155,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 0.54973084, b: 0, a: 1}
-    - _Color: {r: 0.7290468, g: 0, b: 1, a: 1}
+    - _Color: {r: 0.23160896, g: 0.06759523, b: 0.2924528, a: 1}
     - _ColorCelShadow: {r: 0.38581347, g: 0.38787434, b: 0.9622642, a: 1}
     - _ColorDim: {r: 0.58431375, g: 0.058823515, b: 0.5628709, a: 1}
     - _ColorDimCurve: {r: 0.7924528, g: 0.37309113, b: 0.13830544, a: 0.85}

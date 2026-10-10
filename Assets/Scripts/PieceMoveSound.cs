@@ -35,4 +35,27 @@ public class PieceMoveSound : MonoBehaviour
             audioSource.PlayOneShot(moveClip);
         }
     }
+
+    // For a piece whose renderers were switched off until just now (an enemy
+    // stepping out of Grass): isVisible stays false until the next frame is
+    // drawn, so this goes by whether the piece stands within the main
+    // camera's view instead.
+    public void PlayIfOnScreen()
+    {
+        Camera mainCamera = Camera.main;
+
+        if (moveClip == null || mainCamera == null)
+        {
+            return;
+        }
+
+        Vector3 viewportPoint = mainCamera.WorldToViewportPoint(transform.position);
+
+        if (viewportPoint.z > 0f &&
+            viewportPoint.x >= 0f && viewportPoint.x <= 1f &&
+            viewportPoint.y >= 0f && viewportPoint.y <= 1f)
+        {
+            audioSource.PlayOneShot(moveClip);
+        }
+    }
 }

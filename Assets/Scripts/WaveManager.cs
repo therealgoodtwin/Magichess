@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Spawns enemy pawns in waves, on tiles marked IsSpawnTile (paint them via
-/// Tools > Regicide 2 > Paint Spawn Tiles), replacing the old PawnSpawner.
+/// Spawns enemy pawns in waves, on tiles marked IsSpawnTile (the Is Spawn
+/// Tile checkbox on each Tile), replacing the old PawnSpawner.
 ///
 /// Wave 1 spawns immediately. After that, the next wave spawns
 /// automatically once turnsPerWave turns have passed - or sooner,

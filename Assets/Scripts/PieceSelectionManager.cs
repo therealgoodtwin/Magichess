@@ -22,7 +22,21 @@ public class PieceSelectionManager : MonoBehaviour
 
     private void Update()
     {
+        // A battle's setup phase reads the clicks itself: until every piece
+        // is deployed, nothing can be selected or moved.
+        if (BattleSetup.IsActive)
+        {
+            return;
+        }
+
         if (TurnManager.IsEnemyTurn || current == null || current.IsMoving || PawnSummonController.IsPlacing || ArsenalTeleporter.IsTeleporting)
+        {
+            return;
+        }
+
+        // Under initiative turns nothing is clickable while no player piece
+        // has the turn (an enemy pawn is moving, or between turns).
+        if (InitiativeTurnManager.IsRunning && InitiativeTurnManager.ActivePlayerPiece == null)
         {
             return;
         }
@@ -162,8 +176,33 @@ public class PieceSelectionManager : MonoBehaviour
         return null;
     }
 
+    // Used by InitiativeTurnManager to hand the turn to a player piece:
+    // selects it whatever else was selected, with none of the usual checks.
+    public void ActivatePiece(ISelectablePiece piece)
+    {
+        if (current != piece)
+        {
+            current?.Deselect();
+            current = piece;
+        }
+
+        current.Select();
+    }
+
     private void SelectPiece(ISelectablePiece piece)
     {
+        // Under initiative turns only the piece whose turn it is can be
+        // selected - clicking any other piece does nothing.
+        if (InitiativeTurnManager.IsRunning)
+        {
+            if (piece == InitiativeTurnManager.ActivePlayerPiece)
+            {
+                ActivatePiece(piece);
+            }
+
+            return;
+        }
+
         // Already activated this turn (clicked on and moved) - locked out
         // until TurnManager.EnemyTurnEnded resets it, so the click is
         // simply ignored rather than reselecting it.
@@ -172,7 +211,7 @@ public class PieceSelectionManager : MonoBehaviour
             return;
         }
 
-        if (!TurnManager.TurnsEnabled && piece != king)
+        if (!TurnManager.TurnsEnabled && !ReferenceEquals(piece, king))
         {
             return;
         }

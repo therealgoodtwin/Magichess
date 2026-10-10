@@ -12,13 +12,10 @@ using UnityEngine;
 /// Counts against the same one-extra-piece-per-turn limit as White Pawns
 /// (see PieceActivationLimit), and its fire switches off the same way.
 ///
-/// Has 2 HP (set on its Health component) rather than the usual 1. When an
-/// enemy pawn attacks it: if the hit doesn't kill it, the attacker is
-/// destroyed in return (same as attacking the King); if the hit finishes it
-/// off, the attacker survives and takes its tile (same as capturing a White
-/// Pawn). See EnemyPawnController.ResolveRookAttack.
+/// Attacks go by HP, the same as for every piece: an enemy that moves onto
+/// it deals its Damage, and slides back again if that doesn't kill it.
 /// </summary>
-public class RookController : MonoBehaviour, ISelectablePiece
+public class RookController : MonoBehaviour, ISelectablePiece, IDeployablePiece
 {
     [Tooltip("World units per second this rook slides at when stepping onto a tile.")]
     [SerializeField] private float moveSpeed = 8f;
@@ -26,10 +23,26 @@ public class RookController : MonoBehaviour, ISelectablePiece
     [Tooltip("Furthest a rook may travel in one move, in tiles.")]
     [SerializeField] private int maxRange = 7;
 
-    [Tooltip("HP dealt to an enemy pawn's Health when this rook moves onto its tile, instead of an unconditional kill. Separate from the return-damage rule that applies when an enemy attacks this rook instead.")]
+    [Tooltip("Hit points. Starts out as whatever the Health component was set to.")]
+    [SerializeField, Min(0)] private int hp;
+    [Tooltip("HP dealt to an enemy when this rook moves onto its tile. If the enemy survives, this rook slides back to where it came from.")]
     [SerializeField] private int captureDamage = 3;
 
     public int CaptureDamage => captureDamage;
+
+    [Tooltip("Turn order in battles with an Initiative Turn Manager: the higher, the earlier this piece acts each round. Player pieces go before enemy pawns on the same Initiative.")]
+    [SerializeField] private int initiative = 1;
+
+    public int Initiative => initiative;
+
+    [Tooltip("How much of a threat this rook is to the enemy. An enemy within Threat Range goes for this rook instead of the King if this is at least that enemy's Threat Response.")]
+    [SerializeField, Min(0)] private int threat = 1;
+
+    [Tooltip("How close an enemy has to be, in tiles, for this rook's Threat to draw it. A diagonal step counts as one tile. 0 draws nothing.")]
+    [SerializeField, Min(0)] private int threatRange = 2;
+
+    public int Threat => threat;
+    public int ThreatRange => threatRange;
 
     [Tooltip("Root of this rook's fire effect (e.g. Blue-FireWood). Switched off the first time this rook - or any other piece sharing the one-extra-piece limit - is activated.")]
     [SerializeField] private Transform fireEffectRoot;
@@ -62,6 +75,9 @@ public class RookController : MonoBehaviour, ISelectablePiece
 
     public bool HasBeenActivated { get; private set; }
 
+    // Whether the last Select() found anywhere this piece can move.
+    public bool HasReachableTiles => reachableTiles.Count > 0;
+
     private readonly List<Tile> reachableTiles = new();
 
     // Same pivot-offset fix as the King and Pawns: keeps whatever X/Z offset
@@ -76,16 +92,35 @@ public class RookController : MonoBehaviour, ISelectablePiece
 
     private bool isSliding;
     private Vector3 slideTarget;
+    // Sliding back to the tile it came from, after an attack that didn't kill.
+    private bool isBouncing;
 
     private Health health;
     private RayfireRigid rigid;
     private PieceMoveSound moveSound;
-    private PlayerController king;
 
     // Set right before Health.OnDeath fires (via TakeDamage) so HandleDeath
     // (its synchronous reaction) knows which way to push the fragments.
     private Vector3 pendingKnockbackDirection = Vector3.forward;
 
+    // An HP of 0 means it was never set here, so Health keeps its own.
+    private void Awake()
+    {
+        if (hp > 0 && TryGetComponent(out Health ownHealth))
+        {
+            ownHealth.SetHP(hp);
+        }
+    }
+
+    // Starts the HP field out at whatever Health was already set to, so
+    // nothing changes until it's edited.
+    private void OnValidate()
+    {
+        if (hp <= 0 && TryGetComponent(out Health ownHealth))
+        {
+            hp = ownHealth.StartingHP;
+        }
+    }
     private void OnEnable()
     {
         All.Add(this);
@@ -117,7 +152,6 @@ public class RookController : MonoBehaviour, ISelectablePiece
     {
         rigid = GetComponent<RayfireRigid>();
         moveSound = GetComponent<PieceMoveSound>();
-        king = FindFirstObjectByType<PlayerController>();
 
         currentTile = TileGrid.FindNearest(transform.position);
 
@@ -151,6 +185,32 @@ public class RookController : MonoBehaviour, ISelectablePiece
         transform.position = position;
     }
 
+    // Off the board, to wait on a Pawn Holder until it's deployed: on no
+    // tile, this rook has nowhere to move and nothing counts it as in the
+    // way.
+    public void LeaveBoard()
+    {
+        Deselect();
+        currentTile = null;
+        previousTile = null;
+    }
+
+    // Onto the board from its Pawn Holder: stands this rook on a tile,
+    // centred, as if it had started there.
+    public void PlaceOn(Tile tile)
+    {
+        PiecePivotUtility.CenterOnTile(transform, tile);
+
+        currentTile = tile;
+        previousTile = null;
+        tileOffset = transform.position - tile.transform.position;
+        tileOffset.y = 0f;
+
+        // Against the tile as it stands right now, lifted or not - which is
+        // what FollowTileHeight goes by.
+        heightAboveTile = transform.position.y - tile.transform.position.y;
+    }
+
     public void Select()
     {
         RefreshReachableTiles();
@@ -178,6 +238,15 @@ public class RookController : MonoBehaviour, ISelectablePiece
         SetReachableHighlighted(false);
         reachableTiles.Clear();
 
+        // An enemy hidden in Grass along the way can't be slid past: this
+        // rook runs into it there, and attacks it.
+        Tile hiddenEnemyTile = BoardPieces.FindHiddenEnemyTileBetween(currentTile, target);
+
+        if (hiddenEnemyTile != null)
+        {
+            target = hiddenEnemyTile;
+        }
+
         previousTile = currentTile;
 
         slideTarget = transform.position;
@@ -189,6 +258,24 @@ public class RookController : MonoBehaviour, ISelectablePiece
         moveSound?.PlayIfVisible();
     }
 
+    public bool TakeHit(int amount, Vector3 sourcePosition)
+    {
+        return TakeDamage(amount, sourcePosition);
+    }
+    public void BounceBack()
+    {
+        if (previousTile == null)
+        {
+            return;
+        }
+
+        currentTile = previousTile;
+        slideTarget = transform.position;
+        slideTarget.x = currentTile.transform.position.x + tileOffset.x;
+        slideTarget.z = currentTile.transform.position.z + tileOffset.z;
+        isSliding = true;
+        isBouncing = true;
+    }
     private void Slide()
     {
         // Only X/Z are interpolated here - Y is owned entirely by
@@ -210,6 +297,15 @@ public class RookController : MonoBehaviour, ISelectablePiece
         }
 
         isSliding = false;
+
+        // Back from an attack that didn't kill - the move itself was
+        // already counted when it first landed.
+        if (isBouncing)
+        {
+            isBouncing = false;
+            return;
+        }
+
         HasBeenActivated = true;
 
         // Locks out every White Pawn and other Rook for the rest of this
@@ -235,6 +331,13 @@ public class RookController : MonoBehaviour, ISelectablePiece
         SetFireActive(false);
     }
 
+    // Called by InitiativeTurnManager once this piece's turn is over, moved
+    // or passed: its fire goes out until the round ends.
+    public void EndInitiativeTurn()
+    {
+        SetFireActive(false);
+    }
+
     private void HandleTurnEnded()
     {
         HasBeenActivated = false;
@@ -244,7 +347,8 @@ public class RookController : MonoBehaviour, ISelectablePiece
 
     // Called by an EnemyPawnController whose attack finished this rook off.
     // Returns true if that damage actually killed it, same as Health itself
-    // would report, so the caller knows whether to take this rook's tile.
+    // would report, so the attacker knows whether to take this rook's tile
+    // or slide back.
     public bool TakeDamage(int amount, Vector3 sourcePosition)
     {
         if (health == null)
@@ -296,7 +400,9 @@ public class RookController : MonoBehaviour, ISelectablePiece
     // Slides up to maxRange tiles in each of the four cardinal directions,
     // stopping before any tile a friendly piece occupies (it blocks that
     // whole direction) and including - but not going past - the first tile
-    // an enemy pawn occupies (it can be landed on and captured).
+    // an enemy pawn occupies (it can be landed on and captured). An enemy
+    // hidden in Grass doesn't cut the line short, since the player can't see
+    // it - the rook finds it by running into it (see BeginMoveTo).
     private void RefreshReachableTiles()
     {
         SetReachableHighlighted(false);
@@ -320,7 +426,7 @@ public class RookController : MonoBehaviour, ISelectablePiece
 
                 reachableTiles.Add(tile);
 
-                if (IsEnemyOnTile(tile))
+                if (BoardPieces.IsVisibleEnemyOn(tile))
                 {
                     break;
                 }
@@ -332,41 +438,7 @@ public class RookController : MonoBehaviour, ISelectablePiece
 
     private bool IsOccupiedByFriendly(Tile tile)
     {
-        if (king != null && king.CurrentTile == tile)
-        {
-            return true;
-        }
-
-        foreach (WhitePawnController pawn in WhitePawnController.All)
-        {
-            if (pawn.CurrentTile == tile)
-            {
-                return true;
-            }
-        }
-
-        foreach (RookController rook in All)
-        {
-            if (rook != this && rook.CurrentTile == tile)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool IsEnemyOnTile(Tile tile)
-    {
-        foreach (EnemyPawnController pawn in EnemyPawnController.All)
-        {
-            if (pawn.CurrentTile == tile)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return BoardPieces.IsPlayerPieceOn(tile, this);
     }
 
     private void SetReachableHighlighted(bool highlighted)

@@ -3,12 +3,14 @@ using UnityEngine;
 
 /// <summary>
 /// Marks a GameObject as a walkable chessboard tile, records its color, and
-/// plays a "clickable" highlight (a small lift plus a brightness pulse)
+/// plays a "clickable" highlight (a small lift plus a pulse towards deep blue)
 /// while <see cref="SetHighlighted"/> is on, or an "incoming" highlight (the
 /// same lift, but swapping to a warning material and pulsing its High
 /// Intensity property instead) while <see cref="SetEnemyDestinationHighlighted"/>
 /// is on. Both can be active at once - the enemy highlight wins the material
 /// slot when they overlap, since a warning is the more urgent thing to show.
+/// A third, <see cref="SetDeployHighlighted"/>, flashes the tile green with
+/// no lift: somewhere the player can deploy a piece before a battle.
 /// </summary>
 [RequireComponent(typeof(Renderer))]
 public class Tile : MonoBehaviour
@@ -23,7 +25,7 @@ public class Tile : MonoBehaviour
 
     public TileColor SquareColor => color;
 
-    [Tooltip("Whether enemy pawns are allowed to spawn on this tile. Paint these via Tools > Regicide 2 > Paint Spawn Tiles instead of checking them by hand.")]
+    [Tooltip("Whether enemy pawns are allowed to spawn on this tile (used by the Wave Manager).")]
     [SerializeField] private bool isSpawnTile;
 
     public bool IsSpawnTile => isSpawnTile;
@@ -40,8 +42,19 @@ public class Tile : MonoBehaviour
     [SerializeField] private float liftHeight = 0.2f;
     [SerializeField] private float liftSpeed = 6f;
     [SerializeField] private float pulseSpeed = 3f;
-    [SerializeField, Range(0f, 1f)] private float pulseBrightAmount = 0.4f;
-    [SerializeField, Range(0f, 1f)] private float pulseDarkAmount = 0.4f;
+
+    [Tooltip("The colour a highlighted tile pulses towards, reached at the peak of each pulse.")]
+    [SerializeField] private Color highlightColor = new Color(0.1f, 0.2f, 0.75f);
+
+    [Tooltip("How far the tile's own colour turns into Highlight Color at the peak of the pulse - 1 is all the way.")]
+    [SerializeField, Range(0f, 1f)] private float highlightColorAmount = 0.6f;
+
+    [Header("Deployment Highlight")]
+    [Tooltip("The colour a tile flashes towards while it's somewhere the player can deploy a piece, in a battle's setup phase.")]
+    [SerializeField] private Color deployHighlightColor = new Color(0.1f, 0.85f, 0.2f);
+
+    [Tooltip("How far the tile's own colour turns into Deploy Highlight Color at the peak of the flash - 1 is all the way.")]
+    [SerializeField, Range(0f, 1f)] private float deployHighlightColorAmount = 0.75f;
 
     [Header("Enemy Move Highlight")]
     [Tooltip("Material swapped in while a pawn is en route to this tile (e.g. the EnemyTile material).")]
@@ -62,9 +75,10 @@ public class Tile : MonoBehaviour
     private Material originalMaterial;
     private Material enemyMaterialInstance;
     private Color baseColor;
-    private Color brightColor;
-    private Color darkColor;
+    private Color peakColor;
+    private Color deployPeakColor;
     private bool isHighlighted;
+    private bool isDeployHighlighted;
     private float pulseT;
     private bool isEnemyDestinationHighlighted;
     private float enemyPulseT;
@@ -75,8 +89,8 @@ public class Tile : MonoBehaviour
         tileRenderer = GetComponent<Renderer>();
         originalMaterial = tileRenderer.material;
         baseColor = originalMaterial.color;
-        brightColor = Color.Lerp(baseColor, Color.white, pulseBrightAmount);
-        darkColor = Color.Lerp(baseColor, Color.black, pulseDarkAmount);
+        peakColor = Color.Lerp(baseColor, highlightColor, highlightColorAmount);
+        deployPeakColor = Color.Lerp(baseColor, deployHighlightColor, deployHighlightColorAmount);
 
         if (enemyDestinationMaterial != null)
         {
@@ -142,6 +156,31 @@ public class Tile : MonoBehaviour
         }
     }
 
+    // The setup phase's "you can deploy here": the tile flashes green, but
+    // stays where it is - no lift - so a piece can be stood on it as it
+    // flashes. A move highlight on the same tile takes over the colour for
+    // as long as it's on.
+    public void SetDeployHighlighted(bool highlighted)
+    {
+        if (highlighted && IsSunk)
+        {
+            return;
+        }
+
+        if (isDeployHighlighted == highlighted)
+        {
+            return;
+        }
+
+        isDeployHighlighted = highlighted;
+        pulseT = 0f;
+
+        if (!highlighted && !isHighlighted)
+        {
+            originalMaterial.color = baseColor;
+        }
+    }
+
     public void SetEnemyDestinationHighlighted(bool highlighted)
     {
         if (isEnemyDestinationHighlighted == highlighted)
@@ -185,13 +224,13 @@ public class Tile : MonoBehaviour
             return;
         }
 
-        if (!isHighlighted)
+        if (!isHighlighted && !isDeployHighlighted)
         {
             return;
         }
 
         pulseT += Time.deltaTime * pulseSpeed;
         float playerWave = (Mathf.Sin(pulseT) + 1f) * 0.5f;
-        originalMaterial.color = Color.Lerp(darkColor, brightColor, playerWave);
+        originalMaterial.color = Color.Lerp(baseColor, isHighlighted ? peakColor : deployPeakColor, playerWave);
     }
 }

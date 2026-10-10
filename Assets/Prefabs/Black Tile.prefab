@@ -376,6 +376,6 @@ MonoBehaviour:
   pulseSpeed: 3
   pulseBrightAmount: 0.4
   pulseDarkAmount: 0.4
-  enemyDestinationMaterial: {fileID: 0}
+  enemyDestinationMaterial: {fileID: 2100000, guid: 7d74c960cd942f94f97d771d4669f0f2, type: 2}
   enemyPulseMin: 1
   enemyPulseMax: 3

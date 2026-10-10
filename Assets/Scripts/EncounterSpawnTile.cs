@@ -111,17 +111,17 @@ public class EncounterSpawnTile : MonoBehaviour
             }
         }
 
-        if (!pool.IsBattleEncounter(prefab))
+        if (!pool.UsesBattleMaps(prefab))
         {
             battleMap = null;
         }
-        else if (!pool.CanLoadBattleMap(battleMap))
+        else if (!pool.CanLoadBattleMap(prefab, battleMap))
         {
-            battleMap = pool.PickBattleMap();
+            battleMap = pool.PickBattleMap(prefab);
 
             if (battleMap == null)
             {
-                Debug.LogWarning("EncounterSpawnTile: none of the Encounter Pool's battle maps can be loaded - add them to the build's scene list (the pool's Inspector has a button for it).", pool);
+                Debug.LogWarning($"EncounterSpawnTile: no battle map can be loaded for '{prefab.name}' - its group's Battle Maps Folder (or the pool's default one) has no scenes, or they aren't in the build's scene list (the pool's Inspector has a button for that).", pool);
             }
         }
 

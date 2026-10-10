@@ -18,6 +18,13 @@ public static class PieceActivationLimit
 
     public static void MarkActivated()
     {
+        // Initiative turns give every piece its own turn, so there's no
+        // shared slot to use up.
+        if (InitiativeTurnManager.IsRunning)
+        {
+            return;
+        }
+
         AnyActivatedThisTurn = true;
         Activated?.Invoke();
     }

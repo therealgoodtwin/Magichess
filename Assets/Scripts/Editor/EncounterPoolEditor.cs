@@ -3,9 +3,10 @@ using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// Inspector for an Encounter Pool: folder slots that only take folders, the
-/// filled-in lists shown read-only, and a warning (with a fix button) for any
-/// battle map missing from the build's scene list.
+/// Inspector for an Encounter Pool: the folders and encounter groups, each
+/// group's chance per roll, the filled-in lists shown read-only, and a
+/// warning (with a fix button) for any battle map missing from the build's
+/// scene list.
 /// </summary>
 [CustomEditor(typeof(EncounterPool))]
 public class EncounterPoolEditor : Editor
@@ -17,9 +18,9 @@ public class EncounterPoolEditor : Editor
         serializedObject.Update();
 
         EditorGUILayout.LabelField("Folders", EditorStyles.boldLabel);
-        DrawFolderField("battleEncountersFolder");
-        DrawFolderField("otherEncountersFolder");
-        DrawFolderField("battleMapsFolder");
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("battleEncountersFolder"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("otherEncountersFolder"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("battleMapsFolder"), new GUIContent("Default Battle Maps Folder"));
 
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("Encounter Groups", EditorStyles.boldLabel);
@@ -43,12 +44,12 @@ public class EncounterPoolEditor : Editor
         {
             EditorGUILayout.PropertyField(serializedObject.FindProperty("battleEncounters"), true);
             EditorGUILayout.PropertyField(serializedObject.FindProperty("otherEncounters"), true);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("battleMapPaths"), new GUIContent("Battle Maps"), true);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("battleMapPaths"), new GUIContent("Default Battle Maps"), true);
         }
 
         List<string> missing = new();
 
-        foreach (string path in pool.BattleMapPaths)
+        foreach (string path in pool.GetAllBattleMapPaths())
         {
             if (!SceneFieldDrawer.IsInBuild(path))
             {
@@ -74,20 +75,6 @@ public class EncounterPoolEditor : Editor
         if (GUILayout.Button("Refresh"))
         {
             pool.Refresh();
-        }
-    }
-
-    private void DrawFolderField(string propertyName)
-    {
-        SerializedProperty property = serializedObject.FindProperty(propertyName);
-        GUIContent label = new GUIContent(property.displayName, property.tooltip);
-
-        EditorGUI.BeginChangeCheck();
-        Object folder = EditorGUILayout.ObjectField(label, property.objectReferenceValue, typeof(DefaultAsset), false);
-
-        if (EditorGUI.EndChangeCheck() && (folder == null || AssetDatabase.IsValidFolder(AssetDatabase.GetAssetPath(folder))))
-        {
-            property.objectReferenceValue = folder;
         }
     }
 }

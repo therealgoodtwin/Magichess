@@ -22,13 +22,13 @@ public class EncounterPool : ScriptableObject
     private const string DefaultBattleMapsFolder = "Assets/Scenes/Battle Maps";
 
     [Tooltip("Every prefab in this folder (and its subfolders) can be rolled, and leads to a random battle map.")]
-    [SerializeField] private Object battleEncountersFolder;
+    [SerializeField, Folder] private Object battleEncountersFolder;
 
-    [Tooltip("Every prefab in this folder (and its subfolders) can be rolled too, but keeps whatever scene its own Overworld Encounter is set to.")]
-    [SerializeField] private Object otherEncountersFolder;
+    [Tooltip("Every prefab in this folder (and its subfolders) can be rolled too, but keeps whatever scene its own Overworld Encounter is set to - unless its group has a Battle Maps Folder.")]
+    [SerializeField, Folder] private Object otherEncountersFolder;
 
-    [Tooltip("Every scene in this folder (and its subfolders) can be picked as a battle encounter's destination.")]
-    [SerializeField] private Object battleMapsFolder;
+    [Tooltip("The default for battle encounters: every scene in this folder (and its subfolders) can be picked as their destination. A group with its own Battle Maps Folder uses that instead.")]
+    [SerializeField, Folder] private Object battleMapsFolder;
 
     [SerializeField] private List<GameObject> battleEncounters = new();
     [SerializeField] private List<GameObject> otherEncounters = new();
@@ -61,17 +61,41 @@ public class EncounterPool : ScriptableObject
         [Tooltip("At most this many of this group's prefabs can be on one map, counted together. 0 means they never appear.")]
         [SerializeField, Min(0)] private int maxCount = 1;
 
+        [Tooltip("If set, this group's encounters lead to a random scene from this folder (and its subfolders) instead of the pool's default Battle Maps Folder. Works for Merchant + Rest encounters too.")]
+        [SerializeField, Folder] private Object battleMapsFolder;
+
         [Tooltip("The encounter prefabs in this group.")]
         [SerializeField] private List<GameObject> encounters = new();
+
+        // Filled in from battleMapsFolder, like the pool's own lists.
+        [SerializeField, HideInInspector] private List<string> battleMapPaths = new();
 
         public string Name => name;
         public float Weight => weight;
         public bool HasLimit => hasLimit;
         public int MaxCount => maxCount;
         public IReadOnlyList<GameObject> Encounters => encounters;
+        public bool HasBattleMapsFolder => battleMapsFolder != null;
+        public IReadOnlyList<string> BattleMapPaths => battleMapPaths;
 
         // The limit wins if the two disagree.
         public int MinCount => hasLimit ? Mathf.Min(minCount, maxCount) : minCount;
+
+#if UNITY_EDITOR
+        // True if the folder's scenes changed.
+        public bool RefreshBattleMaps()
+        {
+            List<string> maps = FindScenePaths(battleMapsFolder);
+
+            if (SameItems(maps, battleMapPaths))
+            {
+                return false;
+            }
+
+            battleMapPaths = maps;
+            return true;
+        }
+#endif
     }
 
     [Tooltip("Kinds of encounter, with how often each is picked and how many can be on one map.")]
@@ -354,13 +378,28 @@ public class EncounterPool : ScriptableObject
         return null;
     }
 
-    // A random battle map that can actually be loaded - one missing from the
-    // build's scene list can't be - or null if there are none.
-    public string PickBattleMap()
+    // Whether this encounter is sent to a random battle map: it's in a group
+    // with a Battle Maps Folder, or it came from the battle encounters folder.
+    public bool UsesBattleMaps(GameObject prefab)
     {
+        return GetBattleMapPaths(prefab) != null;
+    }
+
+    // A random battle map for this encounter that can actually be loaded -
+    // one missing from the build's scene list can't be - or null if there
+    // are none.
+    public string PickBattleMap(GameObject prefab)
+    {
+        IReadOnlyList<string> paths = GetBattleMapPaths(prefab);
+
+        if (paths == null)
+        {
+            return null;
+        }
+
         List<string> loadable = new();
 
-        foreach (string path in battleMapPaths)
+        foreach (string path in paths)
         {
             string sceneName = Path.GetFileNameWithoutExtension(path);
 
@@ -373,14 +412,17 @@ public class EncounterPool : ScriptableObject
         return loadable.Count > 0 ? loadable[Random.Range(0, loadable.Count)] : null;
     }
 
-    public bool CanLoadBattleMap(string sceneName)
+    // Whether sceneName is still a valid battle map for this encounter.
+    public bool CanLoadBattleMap(GameObject prefab, string sceneName)
     {
-        if (string.IsNullOrEmpty(sceneName) || !Application.CanStreamedLevelBeLoaded(sceneName))
+        IReadOnlyList<string> paths = GetBattleMapPaths(prefab);
+
+        if (paths == null || string.IsNullOrEmpty(sceneName) || !Application.CanStreamedLevelBeLoaded(sceneName))
         {
             return false;
         }
 
-        foreach (string path in battleMapPaths)
+        foreach (string path in paths)
         {
             if (Path.GetFileNameWithoutExtension(path) == sceneName)
             {
@@ -389,6 +431,27 @@ public class EncounterPool : ScriptableObject
         }
 
         return false;
+    }
+
+    // The first of this encounter's groups to have a Battle Maps Folder
+    // decides; failing that, battle encounters use the pool's default.
+    // Null if this encounter isn't sent to a battle map at all.
+    private IReadOnlyList<string> GetBattleMapPaths(GameObject prefab)
+    {
+        if (prefab == null)
+        {
+            return null;
+        }
+
+        foreach (EncounterGroup group in groups)
+        {
+            if (group.HasBattleMapsFolder && Covers(group, prefab.name))
+            {
+                return group.BattleMapPaths;
+            }
+        }
+
+        return IsBattleEncounter(prefab) ? battleMapPaths : null;
     }
 
     private static void AddExisting(List<GameObject> into, List<GameObject> from)
@@ -403,7 +466,25 @@ public class EncounterPool : ScriptableObject
     }
 
 #if UNITY_EDITOR
-    public IReadOnlyList<string> BattleMapPaths => battleMapPaths;
+    // Every battle map the pool can send an encounter to - the default
+    // folder's and every group's - each once.
+    public List<string> GetAllBattleMapPaths()
+    {
+        List<string> all = new(battleMapPaths);
+
+        foreach (EncounterGroup group in groups)
+        {
+            foreach (string path in group.BattleMapPaths)
+            {
+                if (!all.Contains(path))
+                {
+                    all.Add(path);
+                }
+            }
+        }
+
+        return all;
+    }
 
     // A new pool starts out pointed at the project's usual folders.
     private void Reset()
@@ -435,7 +516,14 @@ public class EncounterPool : ScriptableObject
         List<GameObject> other = FindPrefabs(otherEncountersFolder);
         List<string> maps = FindScenePaths(battleMapsFolder);
 
-        if (SameItems(battle, battleEncounters) && SameItems(other, otherEncounters) && SameItems(maps, battleMapPaths))
+        bool changed = !SameItems(battle, battleEncounters) || !SameItems(other, otherEncounters) || !SameItems(maps, battleMapPaths);
+
+        foreach (EncounterGroup group in groups)
+        {
+            changed |= group.RefreshBattleMaps();
+        }
+
+        if (!changed)
         {
             return;
         }

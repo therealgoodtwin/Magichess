@@ -311,6 +311,12 @@ public class PawnSummonController : MonoBehaviour
 
     private static bool IsTileOccupied(Tile tile)
     {
+        // A Blocker's tile is closed to every piece, summoned ones included.
+        if (TileGrid.IsBlocked(tile))
+        {
+            return true;
+        }
+
         PlayerController king = FindFirstObjectByType<PlayerController>();
 
         if (king != null && king.CurrentTile == tile)

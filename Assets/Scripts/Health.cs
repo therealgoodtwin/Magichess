@@ -8,10 +8,10 @@ using UnityEngine;
 /// </summary>
 public class Health : MonoBehaviour
 {
-    [Tooltip("HP this has when the game starts.")]
+    [Tooltip("HP this has when the game starts. On a piece, the HP field on its controller sets this instead.")]
     [SerializeField] private int startingHP = 1;
 
-    [Tooltip("The most HP this can have.")]
+    [Tooltip("The most HP this can have. On a piece, the HP field on its controller sets this instead.")]
     [SerializeField] private int maxHP = 1;
 
     // (currentHP, maxHP)
@@ -20,6 +20,17 @@ public class Health : MonoBehaviour
 
     public int CurrentHP { get; private set; }
     public int MaxHP => maxHP;
+    public int StartingHP => startingHP;
+
+    // Gives this a fresh, full hp - used by a piece's own HP setting. Sets
+    // the starting value too, so it holds whether or not this component's
+    // own Awake has run yet.
+    public void SetHP(int hp)
+    {
+        startingHP = hp;
+        maxHP = hp;
+        CurrentHP = hp;
+    }
 
     // Where the last TakeDamage call came from - lets an OnDeath listener
     // react toward/away from whatever dealt the fatal hit.

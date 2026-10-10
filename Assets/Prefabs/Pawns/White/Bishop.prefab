@@ -33,8 +33,8 @@ Transform:
   m_GameObject: {fileID: 1082664438948423871}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -27.349, y: 4.2804, z: -72.74}
-  m_LocalScale: {x: 0.79671, y: 0.79671, z: 0.79671}
+  m_LocalPosition: {x: -27.376, y: 3.8414, z: -72.753}
+  m_LocalScale: {x: 1.9387021, y: 1.9387021, z: 1.9387021}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2121534745683216831}
@@ -319,8 +319,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b8cf2e1b45024b80941e17365ec9436e, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   startingHP: 1
   maxHP: 1
 --- !u!82 &4271982314271982183
@@ -430,8 +430,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f45d0fd07fc5471ba9a4d2fd0a01fda1, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   moveClip: {fileID: 8300000, guid: 6e962c4140e761f4f93a56a931e56fcc, type: 3}
   visibilityRenderer: {fileID: 1202661650613038827}
 --- !u!114 &4271982314271982185
@@ -444,11 +444,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b33d46046aae4b9da848a1f619ba4446, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  moveSpeed: 8
+  m_Name: 
+  m_EditorClassIdentifier: 
+  moveSpeed: 12
   maxRange: 10
+  hp: 1
   captureDamage: 3
+  initiative: 4
+  threat: 4
+  threatRange: 2
   fireEffectRoot: {fileID: 2121534745683216831}
   explosionForce: 8
   explosionUpwardForce: 3

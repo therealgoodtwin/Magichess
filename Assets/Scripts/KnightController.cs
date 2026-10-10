@@ -12,18 +12,33 @@ using UnityEngine;
 /// friendly piece already occupies it (an enemy pawn there is captured
 /// instead). Counts against the same one-extra-piece-per-turn limit as White
 /// Pawns and the Rook (see PieceActivationLimit), and its fire switches off
-/// the same way. Has 1 HP - a single hit from an enemy pawn destroys it
-/// outright, same as a White Pawn, with no return damage to the attacker.
+/// the same way. Attacks go by HP, the same as for every piece.
 /// </summary>
-public class KnightController : MonoBehaviour, ISelectablePiece
+public class KnightController : MonoBehaviour, ISelectablePiece, IDeployablePiece
 {
     [Tooltip("World units per second this knight slides at when stepping onto a tile.")]
     [SerializeField] private float moveSpeed = 8f;
 
-    [Tooltip("HP dealt to an enemy pawn's Health when this knight moves onto its tile, instead of an unconditional kill.")]
+    [Tooltip("Hit points. Starts out as whatever the Health component was set to.")]
+    [SerializeField, Min(0)] private int hp;
+    [Tooltip("HP dealt to an enemy when this knight moves onto its tile. If the enemy survives, this knight slides back to where it came from.")]
     [SerializeField] private int captureDamage = 3;
 
     public int CaptureDamage => captureDamage;
+
+    [Tooltip("Turn order in battles with an Initiative Turn Manager: the higher, the earlier this piece acts each round. Player pieces go before enemy pawns on the same Initiative.")]
+    [SerializeField] private int initiative = 1;
+
+    public int Initiative => initiative;
+
+    [Tooltip("How much of a threat this knight is to the enemy. An enemy within Threat Range goes for this knight instead of the King if this is at least that enemy's Threat Response.")]
+    [SerializeField, Min(0)] private int threat = 1;
+
+    [Tooltip("How close an enemy has to be, in tiles, for this knight's Threat to draw it. A diagonal step counts as one tile. 0 draws nothing.")]
+    [SerializeField, Min(0)] private int threatRange = 2;
+
+    public int Threat => threat;
+    public int ThreatRange => threatRange;
 
     [Tooltip("Roots of this knight's fire effects (e.g. Blue-FireWood) - this model has more than one. All are switched off the first time this knight - or any other piece sharing the one-extra-piece limit - is activated.")]
     [SerializeField] private Transform[] fireEffectRoots;
@@ -59,6 +74,9 @@ public class KnightController : MonoBehaviour, ISelectablePiece
 
     public bool HasBeenActivated { get; private set; }
 
+    // Whether the last Select() found anywhere this piece can move.
+    public bool HasReachableTiles => reachableTiles.Count > 0;
+
     private readonly List<Tile> reachableTiles = new();
 
     // Same pivot-offset fix as the King, Pawns and Rook: keeps whatever X/Z
@@ -74,16 +92,35 @@ public class KnightController : MonoBehaviour, ISelectablePiece
 
     private bool isSliding;
     private Vector3 slideTarget;
+    // Sliding back to the tile it came from, after an attack that didn't kill.
+    private bool isBouncing;
 
     private Health health;
     private RayfireRigid rigid;
     private PieceMoveSound moveSound;
-    private PlayerController king;
 
-    // Set right before Health.Kill() so HandleDeath (its synchronous
+    // Set right before a hit lands so HandleDeath (its synchronous
     // OnDeath reaction) knows which way to push the fragments.
     private Vector3 pendingKnockbackDirection = Vector3.forward;
 
+    // An HP of 0 means it was never set here, so Health keeps its own.
+    private void Awake()
+    {
+        if (hp > 0 && TryGetComponent(out Health ownHealth))
+        {
+            ownHealth.SetHP(hp);
+        }
+    }
+
+    // Starts the HP field out at whatever Health was already set to, so
+    // nothing changes until it's edited.
+    private void OnValidate()
+    {
+        if (hp <= 0 && TryGetComponent(out Health ownHealth))
+        {
+            hp = ownHealth.StartingHP;
+        }
+    }
     private void OnEnable()
     {
         All.Add(this);
@@ -115,7 +152,6 @@ public class KnightController : MonoBehaviour, ISelectablePiece
     {
         rigid = GetComponent<RayfireRigid>();
         moveSound = GetComponent<PieceMoveSound>();
-        king = FindFirstObjectByType<PlayerController>();
 
         currentTile = TileGrid.FindNearest(transform.position);
 
@@ -147,6 +183,32 @@ public class KnightController : MonoBehaviour, ISelectablePiece
         Vector3 position = transform.position;
         position.y = currentTile.transform.position.y + heightAboveTile;
         transform.position = position;
+    }
+
+    // Off the board, to wait on a Pawn Holder until it's deployed: on no
+    // tile, this knight has nowhere to move and nothing counts it as in the
+    // way.
+    public void LeaveBoard()
+    {
+        Deselect();
+        currentTile = null;
+        previousTile = null;
+    }
+
+    // Onto the board from its Pawn Holder: stands this knight on a tile,
+    // centred, as if it had started there.
+    public void PlaceOn(Tile tile)
+    {
+        PiecePivotUtility.CenterOnTile(transform, tile);
+
+        currentTile = tile;
+        previousTile = null;
+        tileOffset = transform.position - tile.transform.position;
+        tileOffset.y = 0f;
+
+        // Against the tile as it stands right now, lifted or not - which is
+        // what FollowTileHeight goes by.
+        heightAboveTile = transform.position.y - tile.transform.position.y;
     }
 
     public void Select()
@@ -187,6 +249,36 @@ public class KnightController : MonoBehaviour, ISelectablePiece
         moveSound?.PlayIfVisible();
     }
 
+    public bool TakeHit(int amount, Vector3 sourcePosition)
+    {
+        if (health == null)
+        {
+            return false;
+        }
+
+        // Set before the hit lands, since a fatal one runs HandleDeath
+        // straight away.
+        Vector3 direction = transform.position - sourcePosition;
+        direction.y = 0f;
+        pendingKnockbackDirection = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward;
+
+        health.TakeDamage(amount, sourcePosition);
+        return health.CurrentHP <= 0;
+    }
+    public void BounceBack()
+    {
+        if (previousTile == null)
+        {
+            return;
+        }
+
+        currentTile = previousTile;
+        slideTarget = transform.position;
+        slideTarget.x = currentTile.transform.position.x + tileOffset.x;
+        slideTarget.z = currentTile.transform.position.z + tileOffset.z;
+        isSliding = true;
+        isBouncing = true;
+    }
     private void Slide()
     {
         // Only X/Z are interpolated here - Y is owned entirely by
@@ -211,6 +303,15 @@ public class KnightController : MonoBehaviour, ISelectablePiece
         }
 
         isSliding = false;
+
+        // Back from an attack that didn't kill - the move itself was
+        // already counted when it first landed.
+        if (isBouncing)
+        {
+            isBouncing = false;
+            return;
+        }
+
         HasBeenActivated = true;
 
         // Locks out every White Pawn, Rook and other Knight for the rest of
@@ -244,18 +345,18 @@ public class KnightController : MonoBehaviour, ISelectablePiece
         SetFireActive(false);
     }
 
+    // Called by InitiativeTurnManager once this piece's turn is over, moved
+    // or passed: its fire goes out until the round ends.
+    public void EndInitiativeTurn()
+    {
+        SetFireActive(false);
+    }
+
     private void HandleTurnEnded()
     {
         HasBeenActivated = false;
         PieceActivationLimit.ResetForNewTurn();
         SetFireActive(true);
-    }
-
-    // Called by an EnemyPawnController that just captured this knight.
-    public void Kill(Vector3 knockbackDirection)
-    {
-        pendingKnockbackDirection = knockbackDirection;
-        health?.Kill();
     }
 
     private void HandleDeath()
@@ -315,36 +416,7 @@ public class KnightController : MonoBehaviour, ISelectablePiece
 
     private bool IsOccupiedByFriendly(Tile tile)
     {
-        if (king != null && king.CurrentTile == tile)
-        {
-            return true;
-        }
-
-        foreach (WhitePawnController pawn in WhitePawnController.All)
-        {
-            if (pawn.CurrentTile == tile)
-            {
-                return true;
-            }
-        }
-
-        foreach (RookController rook in RookController.All)
-        {
-            if (rook.CurrentTile == tile)
-            {
-                return true;
-            }
-        }
-
-        foreach (KnightController knight in All)
-        {
-            if (knight != this && knight.CurrentTile == tile)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return BoardPieces.IsPlayerPieceOn(tile, this);
     }
 
     private void SetReachableHighlighted(bool highlighted)
