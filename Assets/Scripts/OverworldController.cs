@@ -4,8 +4,9 @@ using UnityEngine;
 
 /// <summary>
 /// Runs the Overworld. There are no turns here: the King is always selected
-/// and can keep moving to any tile next to him. Every tile he steps off
-/// sinks out of the way and can't be walked onto again. Moving onto an
+/// and can keep moving to any tile next to him, back and forth as he likes.
+/// Stepping onto a tile with a Tile Group Sinker sinks that sinker's groups
+/// of tiles out of play, encounters and all (see SinkTiles). Moving onto an
 /// encounter (see OverworldEncounter) saves the Overworld and wipes over to
 /// that encounter's scene. Coming back restores everything as it was left,
 /// with the King on the encounter's tile.
@@ -15,7 +16,7 @@ using UnityEngine;
 [RequireComponent(typeof(PieceSelectionManager))]
 public class OverworldController : MonoBehaviour
 {
-    [Tooltip("How far down, in world units, a tile sinks once the King steps off it.")]
+    [Tooltip("How far down, in world units, a tile sinks when a Tile Group Sinker takes it out of play.")]
     [SerializeField] private float sinkDepth = 4f;
 
     [Tooltip("Seconds between the King taking an encounter and the screen wipe starting, so the pawn breaking apart can be seen.")]
@@ -117,20 +118,23 @@ public class OverworldController : MonoBehaviour
             return;
         }
 
-        Tile left = king.PreviousTile;
-
-        if (left != null && left != king.CurrentTile && !left.IsSunk)
+        // Stepping onto a Tile Group Sinker's tile closes its groups of
+        // tiles off - before anything else, so it's part of what's saved if
+        // this same step also takes an encounter.
+        foreach (TileGroupSinker sinker in TileGroupSinker.All.ToArray())
         {
-            left.Sink(sinkDepth, false);
-            sunkTiles.Add(left);
+            if (sinker.Tile == king.CurrentTile)
+            {
+                SinkTiles(sinker.FindTiles());
+            }
         }
 
         OverworldEncounter encounter = OverworldEncounter.FindOnTile(king.CurrentTile);
 
         if (encounter == null)
         {
-            // The King re-lit his neighbours as he landed, before the tile
-            // he left sank - light them again without it.
+            // The King re-lit his neighbours as he landed, before anything
+            // sank - light them again without whatever just did.
             king.Select();
             return;
         }
@@ -161,6 +165,33 @@ public class OverworldController : MonoBehaviour
         encounter.Clear();
 
         StartCoroutine(Leave(sceneName, encounterDelay));
+    }
+
+    // Takes tiles out of play for good: they sink and can't be walked onto
+    // again, and any encounter standing on one goes with it. All of it is
+    // remembered, so it's still gone when the player comes back. The tile
+    // the King is standing on is never sunk.
+    public void SinkTiles(IEnumerable<Tile> tiles)
+    {
+        foreach (Tile tile in tiles)
+        {
+            if (tile == null || tile.IsSunk || (king != null && tile == king.CurrentTile))
+            {
+                continue;
+            }
+
+            OverworldEncounter encounter = OverworldEncounter.FindOnTile(tile);
+
+            while (encounter != null)
+            {
+                clearedEncounters.Add(encounter.HomePosition);
+                encounter.Remove();
+                encounter = OverworldEncounter.FindOnTile(tile);
+            }
+
+            tile.Sink(sinkDepth, false);
+            sunkTiles.Add(tile);
+        }
     }
 
     // Saves the Overworld and wipes over to another scene. Anything that

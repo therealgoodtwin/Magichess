@@ -103,6 +103,15 @@ public class OverworldEncounter : MonoBehaviour
         return null;
     }
 
+    // Takes this encounter away without the King ever reaching it - its
+    // tile has sunk out of play. Switched off as well as destroyed, so it
+    // stops counting as standing there straight away.
+    public void Remove()
+    {
+        gameObject.SetActive(false);
+        Destroy(gameObject);
+    }
+
     // An Enemy Pawn Controller already blows this pawn up when the King
     // lands on it. Anything else used as an encounter is just removed.
     public void Clear()

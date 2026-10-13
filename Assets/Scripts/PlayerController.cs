@@ -363,7 +363,7 @@ public class PlayerController : MonoBehaviour, ISelectablePiece
 
         foreach (Tile neighbor in TileGrid.GetNeighbors(currentTile))
         {
-            // Sunk tiles (left behind in the Overworld) can't be walked onto,
+            // Sunk tiles (closed off in the Overworld) can't be walked onto,
             // and neither can a tile another of the player's pieces is on.
             if (!neighbor.IsSunk && !BoardPieces.IsPlayerPieceOn(neighbor, this))
             {

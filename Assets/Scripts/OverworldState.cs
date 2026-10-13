@@ -4,7 +4,8 @@ using UnityEngine;
 /// <summary>
 /// What the Overworld looked like the last time the player left it through a
 /// scene transition: the tile the King was standing on, the tiles that had
-/// already sunk behind him, and the encounters already taken. Kept in memory
+/// been sunk out of play, and the encounters already taken or removed along
+/// with their tiles. Kept in memory
 /// only, so it lasts until the game is closed. Tiles and encounters are
 /// remembered by position, since the objects themselves are rebuilt every
 /// time the scene loads.
