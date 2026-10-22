@@ -6,15 +6,15 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Runs the Main Menu intro. Until the Go button is clicked, camera panning
 /// and piece controls stay disabled. Clicking the button pushes it in and
-/// back out, slides it off the left edge of the screen, and glides the
-/// camera to the target camera's position and facing. Once the glide is done,
+/// back out, shrinks it away to nothing, and glides the camera to the
+/// target camera's position and facing. Once the glide is done,
 /// the disabled controls switch on and the King's reachable tiles light up,
 /// so play continues exactly like in the level.
 /// </summary>
 public class MainMenuController : MonoBehaviour
 {
     [Header("Go Button")]
-    [Tooltip("The whole 'Go button' object - slides off screen after being clicked.")]
+    [Tooltip("The whole 'Go button' object - shrinks away to nothing after being clicked, then is deleted.")]
     [SerializeField] private Transform goButton;
 
     [Tooltip("The clickable body of the button (the 'Cube'). It's what gets pushed in, and what a click has to hit.")]
@@ -29,8 +29,8 @@ public class MainMenuController : MonoBehaviour
     [Tooltip("Units per second the push-in/push-out plays at.")]
     [SerializeField] private float pressSpeed = 3f;
 
-    [Tooltip("Units per second the button slides off screen at.")]
-    [SerializeField] private float slideSpeed = 30f;
+    [Tooltip("Seconds the button takes to shrink away to nothing once it's been pushed. 0 makes it vanish at once.")]
+    [SerializeField, Min(0f)] private float shrinkDuration = 0.25f;
 
     [Header("Camera Glide")]
     [Tooltip("The camera that glides. It's the active camera the player sees.")]
@@ -60,7 +60,7 @@ public class MainMenuController : MonoBehaviour
     private Vector3 pressDirection;
     private bool isPressingIn;
 
-    private bool buttonSlideDone;
+    private bool buttonShrinkDone;
     private bool cameraGlideDone;
 
     private PlayerController king;
@@ -203,47 +203,40 @@ public class MainMenuController : MonoBehaviour
         }
 
         state = State.Transitioning;
-        StartCoroutine(SlideButtonOffScreen());
+        StartCoroutine(ShrinkButton());
     }
 
-    private IEnumerator SlideButtonOffScreen()
+    // Scales the whole button down to 0, 0, 0 over Shrink Duration, then
+    // deletes it.
+    private IEnumerator ShrinkButton()
     {
-        Vector3 start = goButton.position;
-        Vector3 target = start - uiCamera.transform.right * GetDistanceOffLeftEdge();
+        Vector3 startScale = goButton.localScale;
+        float elapsed = 0f;
 
-        while (goButton.position != target)
+        while (elapsed < shrinkDuration)
         {
-            goButton.position = Vector3.MoveTowards(goButton.position, target, slideSpeed * Time.deltaTime);
+            elapsed += Time.deltaTime;
+            float eased = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / shrinkDuration));
+
+            goButton.localScale = Vector3.Lerp(startScale, Vector3.zero, eased);
             yield return null;
         }
 
-        buttonSlideDone = true;
-        FinishIfReady();
-    }
+        goButton.localScale = Vector3.zero;
 
-    // How far left the button must move for its right-most point to sit just
-    // past the left edge of the screen.
-    private float GetDistanceOffLeftEdge()
-    {
-        Bounds bounds = new Bounds(goButton.position, Vector3.zero);
-
-        foreach (Renderer buttonRenderer in goButton.GetComponentsInChildren<Renderer>())
+        // Gone for good once it's shrunk away - unless this script is on the
+        // button itself, which would take the rest of the intro with it.
+        if (transform.IsChildOf(goButton))
         {
-            bounds.Encapsulate(buttonRenderer.bounds);
+            Debug.LogWarning("MainMenuController: the Go button wasn't deleted, because this script is on it (or on part of it) - move the script to another object.", this);
+        }
+        else
+        {
+            Destroy(goButton.gameObject);
         }
 
-        Vector3 right = uiCamera.transform.right;
-        Vector3 cameraPosition = uiCamera.transform.position;
-
-        Vector3 leftEdge = uiCamera.ViewportToWorldPoint(new Vector3(0f, 0.5f, uiCamera.nearClipPlane));
-        float leftEdgeAlongRight = Vector3.Dot(leftEdge - cameraPosition, right);
-
-        float extentAlongRight = Mathf.Abs(right.x) * bounds.extents.x
-            + Mathf.Abs(right.y) * bounds.extents.y
-            + Mathf.Abs(right.z) * bounds.extents.z;
-        float buttonMaxAlongRight = Vector3.Dot(bounds.center - cameraPosition, right) + extentAlongRight;
-
-        return Mathf.Max(0f, buttonMaxAlongRight - leftEdgeAlongRight) + 0.5f;
+        buttonShrinkDone = true;
+        FinishIfReady();
     }
 
     private IEnumerator GlideCamera()
@@ -273,7 +266,7 @@ public class MainMenuController : MonoBehaviour
 
     private void FinishIfReady()
     {
-        if (!buttonSlideDone || !cameraGlideDone || state == State.Done)
+        if (!buttonShrinkDone || !cameraGlideDone || state == State.Done)
         {
             return;
         }

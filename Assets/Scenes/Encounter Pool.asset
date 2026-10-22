@@ -45,10 +45,11 @@ MonoBehaviour:
     minCount: 1
     hasLimit: 1
     maxCount: 2
-    battleMapsFolder: {fileID: 0}
+    battleMapsFolder: {fileID: 102900000, guid: 91907592b69d91147aebf2814c806fd0, type: 3}
     encounters:
     - {fileID: 9219222813026236324, guid: a6caa8528f3d19a45b043816ab3f04df, type: 3}
-    battleMapPaths: []
+    battleMapPaths:
+    - Assets/Scenes/Overworld/Healing Encounter/Healing Shrine.unity
   - name: Elites
     weight: 4
     minCount: 2
